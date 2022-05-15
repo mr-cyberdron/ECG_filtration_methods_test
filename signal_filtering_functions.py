@@ -359,7 +359,7 @@ def irnotch_filter(input_signal,fs,quality_factor = 0.005,cutoff_freq = 0.01,plo
         plt.show()
     return signal_filtered
 
-def signal_FFT_filtration(input_signal,fs,cutoff_freq = [1,2],bandstop = False,plot = True):
+def signal_FFT_filtration(input_signal,fs,cutoff_freq = [1,2],bandstop = False,treshold = None,plot = True):
     start_time = time.time()
     input_signal = np.array(input_signal)
     W = fftfreq(input_signal.size, d=1/fs)
@@ -367,12 +367,18 @@ def signal_FFT_filtration(input_signal,fs,cutoff_freq = [1,2],bandstop = False,p
     # If our original signal time was in seconds, this is now in Hz
     cut_f_signal = f_signal.copy()
     from_freq =  cutoff_freq[0]
+    if treshold:
+        fft_abs = np.abs(cut_f_signal)
+        cut_f_signal[fft_abs <= treshold] = 0
+
     to_freq = cutoff_freq[1]
     if bandstop:
         cut_f_signal[(W > from_freq * 2)&(W < to_freq * 2)] = 0
     else:
         cut_f_signal[(W <from_freq*2)] = 0
         cut_f_signal[(W > to_freq*2)] = 0
+
+
     signal_filtered= irfft(cut_f_signal)
     print("--- %s seconds ---" % (time.time() - start_time))
 
