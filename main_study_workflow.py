@@ -1,13 +1,16 @@
 import numpy as np
-
+import time
 import signal_filtering_functions
 from ECG_generation_func import ECG_generation
 import Plottermaan_lib as pl
 import noise_generation_functions as noise
-from signal_filtering_functions import signal_bandpass_filtration,signal_highpass_filtration,irnotch_filter
+from signal_filtering_functions import signal_bandpass_filtration,signal_highpass_filtration,\
+    irnotch_filter,signal_FFT_filtration,signal_lopass_filtration
 from scipy import signal
 import matplotlib.pyplot as plt
 import neurokit2 as nk
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 
 def ecg_signals_comparsion(sig1, sig2, fs, comparing_peak_num=1, QRS_delta_time=0.8, plot=True):
@@ -124,78 +127,456 @@ ecg_line = ECG_generation(
 Noising ECG signal
 '''
 _,isoline_drift_corline,signal_noised = noise.signal_sine_noiser_generator(ecg_line,fs,0.25,scale=0.8,shift=0)
+_,hz50_corline,signal_noised = noise.signal_sine_noiser_generator(ecg_line,fs,50,scale=0.05,shift=0)
 _,white_noise_corline,signal_noised = noise.signal_white_noise_generator(signal_noised,scale=0.02,shift=0)
 _,miosignal_corline,signal_noised = noise.signal_mio_noise_generator(signal_noised,fs=fs,scale=0.15,shift=0)
 
-# pl.masplot(ecg_line,isoline_drift_corline,white_noise_corline,miosignal_corline,signal_noised,
-#            line_names=['Clean_ecg', 'Isoline drift noise', 'White noise','Mio noise', 'Noised signal'],
+# pl.masplot(ecg_line,isoline_drift_corline,hz50_corline,white_noise_corline,miosignal_corline,signal_noised,
+#            line_names=['Clean_ecg', 'Isoline drift noise','50Hz noise', 'White noise','Mio noise', 'Noised signal'],
 #            fs=fs, dotstyle='large',
 #            fig_title='Generation of noised signal',
-#            line_width=3, y_axis_names=['Amplitude mV', 'Amplitude mV', 'Amplitude mV', 'Amplitude mV', 'Amplitude mV'],
-#            x_axis_names=['Time, sec', 'Time, sec', 'Time, sec', 'Time, sec', 'Time, sec']
+#            line_width=3, y_axis_names=['Amplitude mV', 'Amplitude mV','Amplitude mV', 'Amplitude mV', 'Amplitude mV', 'Amplitude mV'],
+#            x_axis_names=['Time, sec', 'Time, sec', 'Time, sec', 'Time, sec', 'Time, sec', 'Time, sec']
 #            )
 
 """
-Filtration test
+ISOLINE DRIFT
 """
-print('#--------------------------------ISOLINE DRIFT--------------------------------#')
-def isoline_drift_butter(input_ecg,fs,
-                         noise_freq = 0.5,noise_scale = 0.8,
-                         filter_order = 4, cutoff_freq = [1,200],plot = True,
-                         imz_flag =False):
-    ecg_line = input_ecg
-    # basline drift
-    isoline_snr,isoline_drift_corline,signal_noised = noise.signal_sine_noiser_generator(ecg_line,fs,noise_freq,
-                                                                                         scale=noise_scale,shift=0)
-    #Filtration - bandpass butter
-    print('Butter_bandpass')
-    isoline_butter_bandpass_filt = signal_bandpass_filtration(signal_noised,
-                                                              fs,order=filter_order,
-                                                              cutoff_freq=cutoff_freq,
-                                                              plot=plot,filter='butter',imz_flag=imz_flag)
-    euclid,manhttan,cosine = ecg_signals_comparsion(ecg_line,isoline_butter_bandpass_filt,fs,plot=plot)
-    return noise_scale,isoline_snr,euclid,manhttan,cosine
+if False:
+    print('#--------------------------------ISOLINE DRIFT--------------------------------#')
+    def isoline_drift_butter(input_ecg,fs,
+                             noise_freq = 0.5,noise_scale = 0.8,
+                             filter_order = 4, cutoff_freq = [1,100],plot = False,
+                             imz_flag =False):
+        ecg_line = input_ecg
+        # basline drift
+        isoline_snr,isoline_drift_corline,signal_noised = noise.signal_sine_noiser_generator(ecg_line,fs,noise_freq,
+                                                                                             scale=noise_scale,shift=0)
+        #Filtration - bandpass butter
+        print('Butter_bandpass')
+        isoline_butter_bandpass_filt = signal_bandpass_filtration(signal_noised,
+                                                                  fs,order=filter_order,
+                                                                  cutoff_freq=cutoff_freq,
+                                                                  plot=plot,filter='butter',imz_flag=imz_flag)
+        euclid,manhttan,cosine = ecg_signals_comparsion(ecg_line,isoline_butter_bandpass_filt,fs,plot=plot)
+        return noise_scale,isoline_snr,euclid,manhttan,cosine
 
-def isoline_drift_firwin(input_ecg,fs,
-                         noise_freq = 0.5,noise_scale = 0.8,
-                         filter_order = 3000, cutoff_freq = [1,200],plot = True,imz_flag = False):
-    ecg_line = input_ecg
-    # basline drift
-    isoline_snr,isoline_drift_corline,signal_noised = noise.signal_sine_noiser_generator(ecg_line,fs,noise_freq,
-                                                                                         scale=noise_scale,shift=0)
-    #Filtration - bandpass butter
-    print('Firwin_bandpass')
+    def isoline_drift_firwin(input_ecg,fs,
+                             noise_freq = 0.5,noise_scale = 0.8,
+                             filter_order = 2000, cutoff_freq = [1,100],plot = False,imz_flag = False):
+        ecg_line = input_ecg
+        # basline drift
+        isoline_snr,isoline_drift_corline,signal_noised = noise.signal_sine_noiser_generator(ecg_line,fs,noise_freq,
+                                                                                             scale=noise_scale,shift=0)
+        #Filtration - bandpass butter
+        print('Firwin_bandpass')
 
-    isoline_butter_bandpass_filt = signal_bandpass_filtration(signal_noised,
-                                                              fs,order=filter_order,
-                                                              cutoff_freq=cutoff_freq,
-                                                              plot=plot,filter='firwin',imz_flag=imz_flag)
-    euclid,manhttan,cosine = ecg_signals_comparsion(ecg_line,isoline_butter_bandpass_filt,fs,plot=plot)
-    return noise_scale,isoline_snr,euclid,manhttan,cosine
-
-def like_2_staged_baseline_filter(input_ecg,fs,
-                         noise_freq = 0.5,noise_scale = 0.8,
-                         quality_factor = 0.005, cutoff_freq = 50,plot = True,imz_flag = False):
-    ecg_line = input_ecg
-    # basline drift
-    isoline_snr, isoline_drift_corline, signal_noised = noise.signal_sine_noiser_generator(ecg_line, fs, noise_freq,
-                                                                                           scale=noise_scale, shift=0)
-    # Filtration - bandpass butter
-    print('Firwin_bandpass')
-
-    isoline_butter_bandpass_filt = irnotch_filter(signal_noised,
-                                                              fs, quality_factor=quality_factor,
-                                                              cutoff_freq=cutoff_freq,
-                                                              plot=plot, imz_flag=imz_flag)
-    euclid, manhttan, cosine = ecg_signals_comparsion(ecg_line, isoline_butter_bandpass_filt, fs, plot=plot)
-    return noise_scale, isoline_snr, euclid, manhttan, cosine
+        isoline_butter_bandpass_filt = signal_bandpass_filtration(signal_noised,
+                                                                  fs,order=filter_order,
+                                                                  cutoff_freq=cutoff_freq,
+                                                                  plot=plot,filter='firwin',imz_flag=imz_flag)
+        euclid,manhttan,cosine = ecg_signals_comparsion(ecg_line,isoline_butter_bandpass_filt,fs,plot=plot)
+        return noise_scale,isoline_snr,euclid,manhttan,cosine
 
 
+    def like_2_staged_baseline_filter(input_ecg,fs,
+                             noise_freq = 0.5,noise_scale = 0.8,
+                             quality_factor = 0.005, cutoff_freq = 0.01,plot = False,imz_flag = False):
+        ecg_line = input_ecg
+        # basline drift
+        isoline_snr, isoline_drift_corline, signal_noised = noise.signal_sine_noiser_generator(ecg_line, fs, noise_freq,
+                                                                                               scale=noise_scale, shift=0)
+        # Filtration - bandpass butter
+        print('Firwin_bandpass')
+
+        isoline_butter_bandpass_filt = irnotch_filter(signal_noised,
+                                                                  fs, quality_factor=quality_factor,
+                                                                  cutoff_freq=cutoff_freq,
+                                                                  plot=plot, imz_flag=imz_flag)
+        euclid, manhttan, cosine = ecg_signals_comparsion(ecg_line, isoline_butter_bandpass_filt, fs, plot=plot)
+        return noise_scale, isoline_snr, euclid, manhttan, cosine
+
+    def FFT_baseline_filter(input_ecg,fs,
+                             noise_freq = 0.5,noise_scale = 0.8, cutoff_freq = [1,100],plot = False):
+        ecg_line = input_ecg
+        # basline drift
+        isoline_snr, isoline_drift_corline, signal_noised = noise.signal_sine_noiser_generator(ecg_line, fs, noise_freq,
+                                                                                               scale=noise_scale, shift=0)
+        # Filtration - bandpass butter
+        print('Firwin_bandpass')
+
+        isoline_butter_bandpass_filt = signal_FFT_filtration(signal_noised,
+                                                                  fs,cutoff_freq=cutoff_freq,
+                                                                  plot=plot)
+        euclid, manhttan, cosine = ecg_signals_comparsion(ecg_line, isoline_butter_bandpass_filt, fs, plot=plot)
+        return noise_scale, isoline_snr, euclid, manhttan, cosine
 
 
+    isoline_drift_butter(ecg_line,fs,imz_flag=True,plot=True)
+    #isoline_drift_firwin(ecg_line,fs,imz_flag=True)
+    # like_2_staged_baseline_filter(ecg_line,fs,imz_flag=False,quality_factor=0.005,
+    #                               cutoff_freq=0.01,plot=True)
+    # FFT_baseline_filter(ecg_line,fs,cutoff_freq=[1,200],plot=True)
 
-#isoline_drift_butter(ecg_line,fs,imz_flag=True,filter_order=4,cutoff_freq=[2,200])
-#isoline_drift_firwin(ecg_line,fs,imz_flag=True,filter_order=3000)
-# like_2_staged_baseline_filter(ecg_line,fs,imz_flag=False,quality_factor=0.005,
-#                               cutoff_freq=0.01,plot=True)
-signal_filtering_functions.signal_FFT_filtration(signal_noised,fs,cutoff_freq=[1,200])
+    def count_time_isoline_drift(iterations = 100):
+        start_time = time.time()
+        for i in range(iterations):
+            print(str(i)+'/'+str(iterations))
+            signal_bandpass_filtration(signal_noised,
+                                       fs, order=4,
+                                       cutoff_freq=[1,100],
+                                       plot=False, filter='butter', imz_flag=False)
+        butter_time = (time.time() - start_time)
+        start_time = time.time()
+        for i in range(iterations):
+            print(str(i) + '/' + str(iterations))
+            signal_bandpass_filtration(signal_noised,
+                                       fs, order=2000,
+                                       cutoff_freq=[1,100],
+                                       plot=False, filter='firwin', imz_flag=False)
+        firwin_time = (time.time() - start_time)
+        start_time = time.time()
+        for i in range(iterations):
+            print(str(i) + '/' + str(iterations))
+            isoline_butter_bandpass_filt = irnotch_filter(signal_noised,
+                                                          fs, quality_factor=0.005,
+                                                          cutoff_freq=0.01,
+                                                          plot=False, imz_flag=False)
+            signal.detrend(isoline_butter_bandpass_filt)
+        irnotch_time = (time.time() - start_time)
+        start_time = time.time()
+        for i in range(iterations):
+            print(str(i) + '/' + str(iterations))
+            soline_butter_bandpass_filt = signal_FFT_filtration(signal_noised,
+                                                                fs, cutoff_freq=[1, 100],
+                                                                plot=False)
+        fft_time = (time.time() - start_time)
+        print("butter_time --- %s seconds ---" % (butter_time))
+        print("firwin_time --- %s seconds ---" % (firwin_time))
+        print("Irnotch_time --- %s seconds ---" % (irnotch_time))
+        print("FFT_time --- %s seconds ---" % (fft_time))
+
+        return butter_time,firwin_time,irnotch_time,fft_time
+
+    def isoline_drift_bars_plot():
+        _, _, butter_euclid, butter_manhttan, butter_cosine = isoline_drift_butter(ecg_line,fs)
+        _,_,firwin_euclid, firwin_manhttan,firwin_cosine = isoline_drift_firwin(ecg_line,fs)
+        _,_,staged_2_euclid, staged_2_manhttan,staged_2_cosine = like_2_staged_baseline_filter(ecg_line,fs)
+        _,_,fft_euclid, fft_manhttan,fft_cosine = FFT_baseline_filter(ecg_line,fs)
+        butter_time, firwin_time, irnotch_time, fft_time = count_time_isoline_drift()
+
+
+        fig = make_subplots(rows=1, cols=5)
+
+        categories = ['Euclid distance']
+        row = 1
+        col = 1
+        fig.add_trace(go.Bar(name='Butter', x=categories, y=[butter_euclid],showlegend = False,marker_color='#0FB3FA'),row=row,col=col)
+        fig.add_trace(go.Bar(name='Firwin', x=categories, y=[firwin_euclid],showlegend = False,marker_color='#43FA1B'), row=row, col=col)
+        fig.add_trace(go.Bar(name='Iirnotch', x=categories, y=[staged_2_euclid],showlegend = False,marker_color='#FAC11B'), row = row, col = col)
+        fig.add_trace(go.Bar(name='FFT filter', x=categories, y=[fft_euclid],showlegend = False,marker_color='#FA10F7'), row = row, col = col)
+
+        categories = ['Manhattan distance']
+        row = 1
+        col = 2
+        fig.add_trace(go.Bar(name='Butter', x=categories, y=[butter_manhttan],showlegend = False,marker_color='#0FB3FA'), row=row, col=col)
+        fig.add_trace(go.Bar(name='Firwin', x=categories, y=[firwin_manhttan],showlegend = False,marker_color='#43FA1B'), row=row, col=col)
+        fig.add_trace(go.Bar(name='Iirnotch', x=categories, y=[staged_2_manhttan],showlegend = False,marker_color='#FAC11B'), row=row, col=col)
+        fig.add_trace(go.Bar(name='FFT filter', x=categories, y=[fft_manhttan],showlegend = False,marker_color='#FA10F7'), row=row, col=col)
+
+        categories = ['Cosine similarity']
+        row = 1
+        col = 3
+        fig.add_trace(go.Bar(name='Butter', x=categories, y=[butter_cosine],showlegend = False,marker_color='#0FB3FA'), row=row, col=col)
+        fig.add_trace(go.Bar(name='Firwin', x=categories, y=[firwin_cosine],showlegend = False,marker_color='#43FA1B'), row=row, col=col)
+        fig.add_trace(go.Bar(name='Iirnotch', x=categories, y=[staged_2_cosine],showlegend = False,marker_color='#FAC11B'), row=row, col=col)
+        fig.add_trace(go.Bar(name='FFT filter', x=categories, y=[fft_cosine],showlegend = False,marker_color='#FA10F7'), row=row, col=col)
+
+        categories = ['Manhattan distance']
+        row = 1
+        col = 4
+        fig.add_trace(go.Bar(name='Butter', x=categories, y=[butter_manhttan],showlegend = False,marker_color='#0FB3FA'), row=row, col=col)
+        fig.add_trace(go.Bar(name='Firwin', x=categories, y=[firwin_manhttan],showlegend = False,marker_color='#43FA1B'), row=row, col=col)
+        fig.add_trace(go.Bar(name='Iirnotch', x=categories, y=[staged_2_manhttan],showlegend = False,marker_color='#FAC11B'), row=row, col=col)
+        fig.add_trace(go.Bar(name='FFT filter', x=categories, y=[fft_manhttan],showlegend = False,marker_color='#FA10F7'), row=row, col=col)
+
+
+        categories = ['Processing time']
+        row = 1
+        col = 5
+        fig.add_trace(go.Bar(name='Butter', x=categories, y=[butter_time],marker_color='#0FB3FA'), row=row, col=col)
+        fig.add_trace(go.Bar(name='Firwin', x=categories, y=[firwin_time],marker_color='#43FA1B'), row=row, col=col)
+        fig.add_trace(go.Bar(name='Iirnotch', x=categories, y=[irnotch_time],marker_color='#FAC11B'), row=row, col=col)
+        fig.add_trace(go.Bar(name='FFT filter', x=categories, y=[fft_time],marker_color='#FA10F7'), row=row, col=col)
+        fig.update_layout(barmode='group')
+
+        fig.update_layout(barmode='group')
+        fig.show()
+
+
+    #isoline_drift_bars_plot()
+
+    def baseline_filters_test():
+        low_noise_scale = 0
+        high_noise_scale = 5
+        step = 0.1
+        scales_mas = np.arange(low_noise_scale,high_noise_scale,step)
+        #Butter
+        snr_mass = []
+        euclid_mass = []
+        manhttan_mass = []
+        cosine_mass = []
+        for scale in scales_mas:
+            print(scale)
+            _, snr, euclid, manhttan, cosine = isoline_drift_butter(ecg_line, fs, imz_flag=False, filter_order=4,
+                                                                  cutoff_freq=[1, 100], plot=False,noise_scale=scale)
+            snr_mass.append(snr)
+            euclid_mass.append(euclid)
+            manhttan_mass.append(manhttan)
+            cosine_mass.append(cosine)
+
+        butter_snr_mass = np.array(snr_mass)
+        butter_euclid_mass = np.array(euclid_mass)
+        butter_manhtan_mass = np.array(manhttan_mass)
+        butter_cosine_mass = np.array(cosine_mass)
+
+        # firwin
+        snr_mass = []
+        euclid_mass = []
+        manhttan_mass = []
+        cosine_mass = []
+        for scale in scales_mas:
+            print(scale)
+            _, snr, euclid, manhttan, cosine = isoline_drift_firwin(ecg_line,fs,imz_flag=False,filter_order=2000,cutoff_freq=[1,100],
+                                                                    plot=False,noise_scale=scale)
+            snr_mass.append(snr)
+            euclid_mass.append(euclid)
+            manhttan_mass.append(manhttan)
+            cosine_mass.append(cosine)
+
+        firwin_snr_mass = np.array(snr_mass)
+        firwin_euclid_mass = np.array(euclid_mass)
+        firwin_manhtan_mass = np.array(manhttan_mass)
+        firwin_cosine_mass = np.array(cosine_mass)
+
+        # 2 staged
+        snr_mass = []
+        euclid_mass = []
+        manhttan_mass = []
+        cosine_mass = []
+        for scale in scales_mas:
+            print(scale)
+            _, snr, euclid, manhttan, cosine =  like_2_staged_baseline_filter(ecg_line,fs,imz_flag=False,
+                                                                              quality_factor=0.005,cutoff_freq=0.01,
+                                                                              plot=False,noise_scale=scale)
+            snr_mass.append(snr)
+            euclid_mass.append(euclid)
+            manhttan_mass.append(manhttan)
+            cosine_mass.append(cosine)
+
+        staged2_snr_mass = np.array(snr_mass)
+        staged2_euclid_mass = np.array(euclid_mass)
+        staged2_manhtan_mass = np.array(manhttan_mass)
+        staged2_cosine_mass = np.array(cosine_mass)
+
+        # fft
+        snr_mass = []
+        euclid_mass = []
+        manhttan_mass = []
+        cosine_mass = []
+        for scale in scales_mas:
+            print(scale)
+            _, snr, euclid, manhttan, cosine =  FFT_baseline_filter(ecg_line,fs,cutoff_freq=[1,100],plot=False,noise_scale=scale)
+            snr_mass.append(snr)
+            euclid_mass.append(euclid)
+            manhttan_mass.append(manhttan)
+            cosine_mass.append(cosine)
+
+        FFT_snr_mass = np.array(snr_mass)
+        FFT_euclid_mass = np.array(euclid_mass)
+        FFT_manhtan_mass = np.array(manhttan_mass)
+        FFT_cosine_mass = np.array(cosine_mass)
+
+        plt.figure()
+        ax1 = plt.subplot(2,2,1)
+        plt.plot(butter_snr_mass,butter_euclid_mass)
+        plt.plot(butter_snr_mass,firwin_euclid_mass)
+        plt.plot(butter_snr_mass,staged2_euclid_mass)
+        plt.plot(butter_snr_mass,FFT_euclid_mass)
+        plt.legend(["Butter", "Firwin","Iirnotch","FFT filter"])
+        plt.xlabel('SNR dB')
+        plt.ylabel('Param_value')
+        ax1.title.set_text('Euclidian distance')
+
+        ax1 = plt.subplot(2, 2, 2)
+        plt.plot(butter_snr_mass, butter_manhtan_mass)
+        plt.plot(butter_snr_mass, firwin_manhtan_mass)
+        plt.plot(butter_snr_mass, staged2_manhtan_mass)
+        plt.plot(butter_snr_mass, FFT_manhtan_mass)
+        plt.legend(["Butter", "Firwin", "Iirnotch", "FFT filter"])
+        plt.xlabel('SNR dB')
+        plt.ylabel('Param_value')
+        ax1.title.set_text('Manhtan distance')
+
+        ax1 = plt.subplot(2, 2, (3,4))
+        plt.plot(butter_snr_mass, butter_cosine_mass)
+        plt.plot(butter_snr_mass, firwin_cosine_mass)
+        plt.plot(butter_snr_mass, staged2_cosine_mass)
+        plt.plot(butter_snr_mass, FFT_cosine_mass)
+        plt.legend(["Butter", "Firwin", "Iirnotch", "FFT filter"])
+        plt.xlabel('SNR dB')
+        plt.ylabel('Param_value')
+        ax1.title.set_text('Cosine similarity')
+        plt.show()
+
+    #baseline_filters_test()
+
+"""
+SINE 50 HZ
+"""
+if True:
+    print('#--------------------------------SINE 50 HZ--------------------------------#')
+    def hz50_butter(input_ecg,fs,
+                             noise_freq = 50,noise_scale = 0.05,
+                             filter_order = 3, cutoff_freq = 40,plot = False,
+                             imz_flag =False):
+        ecg_line = input_ecg
+        snr, hz50_corline, signal_noised = noise.signal_sine_noiser_generator(ecg_line, fs, noise_freq, scale=noise_scale, shift=0)
+
+        #Filtration - bandpass butter
+        print('Butter_bandpass')
+        isoline_butter_bandpass_filt = signal_lopass_filtration(signal_noised,
+                                                                  fs,order=filter_order,
+                                                                  cutoff_freq=cutoff_freq,
+                                                                  plot=plot,filter='butter',imz_flag=imz_flag)
+        euclid,manhttan,cosine = ecg_signals_comparsion(ecg_line,isoline_butter_bandpass_filt,fs,plot=plot)
+        return noise_scale,snr,euclid,manhttan,cosine
+
+    def hz_50_irnotch_filter(input_ecg,fs,
+                             noise_freq = 50,noise_scale = 0.05,
+                             quality_factor = 30, cutoff_freq = 50,plot = False,imz_flag = False):
+        ecg_line = input_ecg
+        # basline drift
+        snr, hz50_corline, signal_noised = noise.signal_sine_noiser_generator(ecg_line, fs, noise_freq, scale=noise_scale, shift=0)
+        # Filtration - bandpass butter
+        print('Firwin_bandpass')
+
+        isoline_butter_bandpass_filt = irnotch_filter(signal_noised,
+                                                                  fs, quality_factor=quality_factor,
+                                                                  cutoff_freq=cutoff_freq,
+                                                                  plot=plot, imz_flag=imz_flag,detrend=False)
+        euclid, manhttan, cosine = ecg_signals_comparsion(ecg_line, isoline_butter_bandpass_filt, fs, plot=plot)
+        return noise_scale, snr, euclid, manhttan, cosine
+
+    def FFT_hz_50_filter(input_ecg,fs,
+                             noise_freq = 50,noise_scale = 0.05, cutoff_freq = [49.8,50.2],plot = False):
+        ecg_line = input_ecg
+        # basline drift
+        snr, hz50_corline, signal_noised = noise.signal_sine_noiser_generator(ecg_line, fs, noise_freq, scale=noise_scale, shift=0)
+        # Filtration - bandpass butter
+        print('Firwin_bandpass')
+        isoline_butter_bandpass_filt = signal_FFT_filtration(signal_noised,
+                                                                  fs,cutoff_freq=cutoff_freq,bandstop=True,
+                                                                  plot=plot)
+        euclid, manhttan, cosine = ecg_signals_comparsion(ecg_line, isoline_butter_bandpass_filt, fs, plot=plot)
+        return noise_scale, snr, euclid, manhttan, cosine
+
+    #hz50_butter(ecg_line,fs,plot=True,imz_flag=True)
+    #hz_50_irnotch_filter(ecg_line,fs,imz_flag=True,plot=True)
+    #FFT_hz_50_filter(ecg_line,fs,plot=True)
+
+    def baseline_filters_test():
+        low_noise_scale = 0
+        high_noise_scale = 0.8
+        step = 0.1
+        scales_mas = np.arange(low_noise_scale,high_noise_scale,step)
+        #Butter
+        snr_mass = []
+        euclid_mass = []
+        manhttan_mass = []
+        cosine_mass = []
+        for scale in scales_mas:
+            print(scale)
+            _, snr, euclid, manhttan, cosine = hz50_butter(ecg_line, fs, imz_flag=False, filter_order=4,
+                                                                  noise_scale=scale)
+            snr_mass.append(snr)
+            euclid_mass.append(euclid)
+            manhttan_mass.append(manhttan)
+            cosine_mass.append(cosine)
+
+        butter_snr_mass = np.array(snr_mass)
+        butter_euclid_mass = np.array(euclid_mass)
+        butter_manhtan_mass = np.array(manhttan_mass)
+        butter_cosine_mass = np.array(cosine_mass)
+
+        # 2 staged
+        snr_mass = []
+        euclid_mass = []
+        manhttan_mass = []
+        cosine_mass = []
+        for scale in scales_mas:
+            print(scale)
+            _, snr, euclid, manhttan, cosine =  hz_50_irnotch_filter(ecg_line,fs,imz_flag=False,
+                                                                              plot=False,noise_scale=scale)
+            snr_mass.append(snr)
+            euclid_mass.append(euclid)
+            manhttan_mass.append(manhttan)
+            cosine_mass.append(cosine)
+
+        staged2_snr_mass = np.array(snr_mass)
+        staged2_euclid_mass = np.array(euclid_mass)
+        staged2_manhtan_mass = np.array(manhttan_mass)
+        staged2_cosine_mass = np.array(cosine_mass)
+
+        # fft
+        snr_mass = []
+        euclid_mass = []
+        manhttan_mass = []
+        cosine_mass = []
+        for scale in scales_mas:
+            print(scale)
+            _, snr, euclid, manhttan, cosine =  FFT_hz_50_filter(ecg_line,fs,plot=False,noise_scale=scale)
+            snr_mass.append(snr)
+            euclid_mass.append(euclid)
+            manhttan_mass.append(manhttan)
+            cosine_mass.append(cosine)
+
+        FFT_snr_mass = np.array(snr_mass)
+        FFT_euclid_mass = np.array(euclid_mass)
+        FFT_manhtan_mass = np.array(manhttan_mass)
+        FFT_cosine_mass = np.array(cosine_mass)
+
+        plt.figure()
+        ax1 = plt.subplot(2,2,1)
+        plt.plot(butter_snr_mass,butter_euclid_mass)
+        plt.plot(butter_snr_mass,staged2_euclid_mass)
+        plt.plot(butter_snr_mass,FFT_euclid_mass)
+        plt.legend(["Butter","Iirnotch","FFT filter"])
+        plt.xlabel('SNR dB')
+        plt.ylabel('Param_value')
+        ax1.title.set_text('Euclidian distance')
+
+        ax1 = plt.subplot(2, 2, 2)
+        plt.plot(butter_snr_mass, butter_manhtan_mass)
+        plt.plot(butter_snr_mass, staged2_manhtan_mass)
+        plt.plot(butter_snr_mass, FFT_manhtan_mass)
+        plt.legend(["Butter", "Iirnotch", "FFT filter"])
+        plt.xlabel('SNR dB')
+        plt.ylabel('Param_value')
+        ax1.title.set_text('Manhtan distance')
+
+        ax1 = plt.subplot(2, 2, (3,4))
+        plt.plot(butter_snr_mass, butter_cosine_mass)
+        plt.plot(butter_snr_mass, staged2_cosine_mass)
+        plt.plot(butter_snr_mass, FFT_cosine_mass)
+        plt.legend(["Butter","Iirnotch", "FFT filter"])
+        plt.xlabel('SNR dB')
+        plt.ylabel('Param_value')
+        ax1.title.set_text('Cosine similarity')
+        plt.show()
+
+    baseline_filters_test()
+
+"""
+White noi
+"""

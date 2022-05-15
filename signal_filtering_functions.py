@@ -36,7 +36,7 @@ def impz(b, a):
     fig.tight_layout()
     plt.show()
 
-def signal_lopass_filtration(input_signal,fs,order = 2,cutoff_freq = 1,plot = True,filter ='butter'):
+def signal_lopass_filtration(input_signal,fs,order = 2,cutoff_freq = 1,plot = True,filter ='butter',imz_flag = False):
     start_time = time.time()
     def butter_lowpass(cutoff, fs, order=5,):
         nyq = 0.5 * fs
@@ -58,6 +58,8 @@ def signal_lopass_filtration(input_signal,fs,order = 2,cutoff_freq = 1,plot = Tr
     if filter == 'firwin':
         b,a = firwin_lowpass(cutoff_freq, fs, order=order)
 
+    if imz_flag == True:
+        impz(b, a)
     signal_filtered = signal.filtfilt(b, a, input_signal)
     print("--- %s seconds ---" % (time.time() - start_time))
     if plot:
@@ -287,7 +289,7 @@ def signal_bandpass_filtration(input_signal,fs,order = 2,cutoff_freq = [1,2],plo
         plt.show()
     return signal_filtered
 
-def irnotch_filter(input_signal,fs,quality_factor = 0.005,cutoff_freq = 0.01,plot = True,filter ='butter',imz_flag = False):
+def irnotch_filter(input_signal,fs,quality_factor = 0.005,cutoff_freq = 0.01,plot = True,filter ='butter',imz_flag = False,detrend = True):
     start_time = time.time()
     def irnotchh(cutoff, fs, quality_factor):
         b_notch, a_notch = signal.iirnotch(cutoff, quality_factor, fs)
@@ -298,8 +300,9 @@ def irnotch_filter(input_signal,fs,quality_factor = 0.005,cutoff_freq = 0.01,plo
         impz(b, a)
 
     signal_filtered = signal.filtfilt(b, a, input_signal)
-    signal_filtered = signal.detrend(signal_filtered)  # deetrend
-    print("--- %s seconds ---" % (time.time() - start_time))
+    if detrend == True:
+        signal_filtered = signal.detrend(signal_filtered)  # deetrend
+    print("--- %s seconds ---" % ((time.time() - start_time)))
     if plot:
         # -----Freq and phase resp----#
         plt.figure()
@@ -356,7 +359,8 @@ def irnotch_filter(input_signal,fs,quality_factor = 0.005,cutoff_freq = 0.01,plo
         plt.show()
     return signal_filtered
 
-def signal_FFT_filtration(input_signal,fs,cutoff_freq = [1,2],plot = True):
+def signal_FFT_filtration(input_signal,fs,cutoff_freq = [1,2],bandstop = False,plot = True):
+    start_time = time.time()
     input_signal = np.array(input_signal)
     W = fftfreq(input_signal.size, d=1/fs)
     f_signal = rfft(input_signal)
@@ -364,35 +368,41 @@ def signal_FFT_filtration(input_signal,fs,cutoff_freq = [1,2],plot = True):
     cut_f_signal = f_signal.copy()
     from_freq =  cutoff_freq[0]
     to_freq = cutoff_freq[1]
-    cut_f_signal[(W <from_freq*2)] = 0
-    cut_f_signal[(W > to_freq*2)] = 0
+    if bandstop:
+        cut_f_signal[(W > from_freq * 2)&(W < to_freq * 2)] = 0
+    else:
+        cut_f_signal[(W <from_freq*2)] = 0
+        cut_f_signal[(W > to_freq*2)] = 0
     signal_filtered= irfft(cut_f_signal)
-    N = np.shape(input_signal)[0]
+    print("--- %s seconds ---" % (time.time() - start_time))
 
-    xf = rfftfreq(N, 1 / fs)
-
-    ylim_max = np.max(np.abs(cut_f_signal))
-
-    plt.figure()
-    ax1 = plt.subplot(2,1,1)
-    plt.title('FFT before filtering')
-    markerline, stemlines, baseline = plt.stem(xf, np.abs(f_signal),markerfmt=" ")
-    plt.ylim(0, ylim_max)
-    plt.setp(stemlines, 'linewidth', 0.8)
-    plt.xlabel('Frequency in Hertz [Hz]')
-    plt.ylabel('Spectrum Magnitude')
-    plt.xlim(0,cutoff_freq[1]+np.round(fs/7))
-    plt.subplot(212,sharex=ax1)
-    plt.title('FFT after filtering')
-    markerline, stemlines, baseline = plt.stem(xf, np.abs(cut_f_signal),markerfmt=" ")
-    plt.setp(stemlines, 'linewidth', 0.8)
-    plt.xlim(0, cutoff_freq[1]+np.round(fs/7))
-    plt.xlabel('Frequency in Hertz [Hz]')
-    plt.ylabel('Spectrum Magnitude')
-    plt.subplots_adjust(hspace=0.53)
-    plt.ylim(0,ylim_max)
-    plt.show()
     if plot:
+        N = np.shape(input_signal)[0]
+
+        xf = rfftfreq(N, 1 / fs)
+
+        ylim_max = np.max(np.abs(cut_f_signal))
+
+        plt.figure()
+        ax1 = plt.subplot(2, 1, 1)
+        plt.title('FFT before filtering')
+        markerline, stemlines, baseline = plt.stem(xf, np.abs(f_signal), markerfmt=" ")
+        plt.ylim(0, ylim_max)
+        plt.setp(stemlines, 'linewidth', 0.8)
+        plt.xlabel('Frequency in Hertz [Hz]')
+        plt.ylabel('Spectrum Magnitude')
+        plt.xlim(-5, cutoff_freq[1] + np.round(fs / 7))
+        plt.subplot(212, sharex=ax1)
+        plt.title('FFT after filtering')
+        markerline, stemlines, baseline = plt.stem(xf, np.abs(cut_f_signal), markerfmt=" ")
+        plt.setp(stemlines, 'linewidth', 0.8)
+        plt.xlim(-5, cutoff_freq[1] + np.round(fs / 7))
+        plt.xlabel('Frequency in Hertz [Hz]')
+        plt.ylabel('Spectrum Magnitude')
+        plt.subplots_adjust(hspace=0.53)
+        plt.ylim(0, ylim_max)
+        plt.show()
+
         plt.figure()
         ax1 = plt.subplot(2, 1, 1)
         t_vector = list(range(np.shape(input_signal)[0]))
@@ -415,5 +425,4 @@ def signal_FFT_filtration(input_signal,fs,cutoff_freq = [1,2],plot = True):
         plt.grid()
         plt.tight_layout()
         plt.show()
-        input('Доделай FFT')
-        return signal_filtered
+    return signal_filtered

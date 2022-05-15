@@ -15,6 +15,7 @@ def signal_sine_noiser_generator (input_signal,sample_rate,sine_freq,scale = 1,s
     signall = signall*scale
     signall = signall+shift
     snr = signal_noise_ratio(input_signal,signall)
+    print('Signal_to_noise_ratio = ' + str(snr) + ' dB')
     if log == True:
         print('#---------------------Sine_noise_generator-------------------------#')
         print('Signal_to_noise_ratio = '+str(snr)+' dB')
@@ -32,6 +33,7 @@ def signal_white_noise_generator(input_signal,scale = 1,shift = 0,log = False):
     signall = signall * scale
     signall = signall + shift
     snr = signal_noise_ratio(input_signal, signall)
+    print('Signal_to_noise_ratio = ' + str(snr) + ' dB')
     if log == True:
         print('#---------------------White_noise_generator-------------------------#')
         print('Signal_to_noise_ratio = ' + str(snr) + ' dB')
@@ -51,6 +53,7 @@ def signal_mio_noise_generator(input_signal,fs = 1000,scale = 1,shift = 0,log = 
     signall = signall * scale
     signall = signall + shift
     snr = signal_noise_ratio(input_signal, signall)
+    print('Signal_to_noise_ratio = ' + str(snr) + ' dB')
     if log==True:
         print('#---------------------Mio_noise_generator-------------------------#')
         print('Signal_to_noise_ratio = ' + str(snr) + ' dB')
