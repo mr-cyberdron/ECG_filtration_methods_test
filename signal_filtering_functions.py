@@ -24,7 +24,10 @@ def impz(b, a):
     plt.title(r'Impulse response', fontsize=15)
 
     plt.subplot(212)
-    step = np.cumsum(response)
+    step_line = np.ones(length)
+    step = signal.lfilter(b, a, step_line)
+    #step = np.cumsum(response)
+
 
     # Compute step response of the system
     plt.stem(x, step, 'g', use_line_collection=True)
@@ -314,7 +317,7 @@ def irnotch_filter(input_signal,fs,quality_factor = 0.005,cutoff_freq = 0.01,plo
         stop_pas_point = np.where(resp_in_dB > -100)
 
         plt.xlim(freq_vector[stop_pas_point[0][0]], freq_vector[stop_pas_point[0][-1]])
-        plt.title("Bandpass Filter Frequency Response")
+        plt.title("Notch Filter Frequency Response")
         plt.xlabel('Frequency [Hz]')
         plt.ylabel('Amplitude [dB]', color='b')
         plt.ylim(-50, 10)

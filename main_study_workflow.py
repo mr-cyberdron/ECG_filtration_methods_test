@@ -1,5 +1,7 @@
 import numpy as np
 import time
+
+import Frequency_toolz.Frequency_tools2
 import signal_filtering_functions
 from ECG_generation_func import ECG_generation
 import Plottermaan_lib as pl
@@ -11,7 +13,10 @@ import matplotlib.pyplot as plt
 import neurokit2 as nk
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from scipy.spatial import distance
 
+#!!!!!!!!!!!!!!111
+#Нужно сравнивать не сигналы а кардиоцыклы, нужно добавить еще параметр схожести чтобы он отображал все изьяны может амплитуда разностной линии
 
 def ecg_signals_comparsion(sig1, sig2, fs, comparing_peak_num=1, QRS_delta_time=0.8, plot=True):
     sig1 = np.array(sig1)
@@ -123,6 +128,8 @@ ecg_line = ECG_generation(
     extrasystoly_n_central_points = 3,
     show_steps = False
 )
+Frequency_toolz.Frequency_tools2.timefft_analisys(ecg_line,fs,plotflag=True)
+input('ss')
 '''
 Noising ECG signal
 '''
@@ -138,7 +145,6 @@ _,miosignal_corline,signal_noised = noise.signal_mio_noise_generator(signal_nois
 #            line_width=3, y_axis_names=['Amplitude mV', 'Amplitude mV','Amplitude mV', 'Amplitude mV', 'Amplitude mV', 'Amplitude mV'],
 #            x_axis_names=['Time, sec', 'Time, sec', 'Time, sec', 'Time, sec', 'Time, sec', 'Time, sec']
 #            )
-
 """
 ISOLINE DRIFT
 """
@@ -212,11 +218,11 @@ if False:
         return noise_scale, isoline_snr, euclid, manhttan, cosine
 
 
-    isoline_drift_butter(ecg_line,fs,imz_flag=True,plot=True)
-    #isoline_drift_firwin(ecg_line,fs,imz_flag=True)
-    # like_2_staged_baseline_filter(ecg_line,fs,imz_flag=False,quality_factor=0.005,
-    #                               cutoff_freq=0.01,plot=True)
-    # FFT_baseline_filter(ecg_line,fs,cutoff_freq=[1,200],plot=True)
+    #isoline_drift_butter(ecg_line,fs,imz_flag=True,plot=True)
+    #isoline_drift_firwin(ecg_line,fs,imz_flag=True,plot=True)
+    #like_2_staged_baseline_filter(ecg_line,fs,imz_flag=False,quality_factor=0.005,
+    #                              cutoff_freq=0.01,plot=True)
+    #FFT_baseline_filter(ecg_line,fs,cutoff_freq=[1,100],plot=True)
 
     def count_time_isoline_drift(iterations = 100):
         start_time = time.time()
@@ -315,7 +321,6 @@ if False:
 
 
     #isoline_drift_bars_plot()
-
     def baseline_filters_test():
         low_noise_scale = 0
         high_noise_scale = 5
@@ -429,7 +434,7 @@ if False:
         ax1.title.set_text('Cosine similarity')
         plt.show()
 
-    #baseline_filters_test()
+    baseline_filters_test()
 
 """
 SINE 50 HZ
@@ -582,7 +587,7 @@ White noise
 """
 
 if False:
-    def White_noise_butter(input_ecg, fs, noise_scale=0.2,
+    def White_noise_butter(input_ecg, fs, noise_scale=0.02,
                              filter_order=4, cutoff_freq=[1, 100], plot=False,
                              imz_flag=False):
         ecg_line = input_ecg
@@ -630,7 +635,7 @@ if False:
 
     def baseline_filters_test():
         low_noise_scale = 0
-        high_noise_scale = 0.2
+        high_noise_scale = 0.1
         step = 0.005
         scales_mas = np.arange(low_noise_scale,high_noise_scale,step)
         #Butter
@@ -723,7 +728,7 @@ if False:
 Mio noise
 """
 
-if True:
+if False:
     def MIO_noise_butter(input_ecg, fs, noise_scale=0.15,
                            filter_order=4, cutoff_freq=[1, 100], plot=False,
                            imz_flag=False):
@@ -771,7 +776,7 @@ if True:
 
     #MIO_noise_butter(ecg_line,fs,plot=True,imz_flag=True)
     # MIO_noise_firwin(ecg_line,fs,plot=True,imz_flag=True)
-    # FFT_MIO_noise_filter(ecg_line,fs,plot=True)
+    #FFT_MIO_noise_filter(ecg_line,fs,plot=True)
 
     def baseline_filters_test():
         low_noise_scale = 0
