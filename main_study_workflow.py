@@ -1,7 +1,8 @@
 import numpy as np
 import time
 
-import Frequency_toolz.Frequency_tools2
+import Frequency_tools.Wavelet.CWT
+import Plottermaan_lib
 import signal_filtering_functions
 from ECG_generation_func import ECG_generation
 import Plottermaan_lib as pl
@@ -126,10 +127,27 @@ ecg_line = ECG_generation(
     f_wave_flag = True,
     extrasystole = True,
     extrasystoly_n_central_points = 3,
-    show_steps = False
+    show_steps = True
 )
-Frequency_toolz.Frequency_tools2.timefft_analisys(ecg_line,fs,plotflag=True)
-input('ss')
+
+# Frequency_tools.Wavelet.CWT.wavelet_CWT(ecg_line,fs,scales_ramge=[1,8],time_range=[2.900,3],plott=True,block=False)
+# #Frequency_tools.Wavelet.CWT.morlet_CWT(ecg_line,fs,w=5,time_range=[1.43,1.5],freq_range=[0,200],plott=True,quality_factor=10)
+#
+# ecg_line = ECG_generation(
+#     duration = 10,
+#     hr = 80,
+#     fs = fs,
+#     P_wave_splitting_flag = True,
+#     R_wave_splitting_flag = True,
+#     delta_wave_flag = False,
+#     f_wave_flag = True,
+#     extrasystole = True,
+#     extrasystoly_n_central_points = 3,
+#     show_steps = False
+# )
+# Frequency_tools.Wavelet.CWT.wavelet_CWT(ecg_line,fs,scales_ramge=[1,8],time_range=[2.904,3],plott=True)
+#
+# input('ss')
 '''
 Noising ECG signal
 '''
