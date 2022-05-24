@@ -2,6 +2,7 @@ import numpy as np
 import time
 
 import Frequency_tools.Wavelet.CWT
+import Geometry.Signal_geometry
 import Plottermaan_lib
 import signal_filtering_functions
 from ECG_generation_func import ECG_generation
@@ -130,24 +131,38 @@ ecg_line = ECG_generation(
     show_steps = True
 )
 
-# Frequency_tools.Wavelet.CWT.wavelet_CWT(ecg_line,fs,scales_ramge=[1,8],time_range=[2.900,3],plott=True,block=False)
-# #Frequency_tools.Wavelet.CWT.morlet_CWT(ecg_line,fs,w=5,time_range=[1.43,1.5],freq_range=[0,200],plott=True,quality_factor=10)
-#
-# ecg_line = ECG_generation(
-#     duration = 10,
-#     hr = 80,
-#     fs = fs,
-#     P_wave_splitting_flag = True,
-#     R_wave_splitting_flag = True,
-#     delta_wave_flag = False,
-#     f_wave_flag = True,
-#     extrasystole = True,
-#     extrasystoly_n_central_points = 3,
-#     show_steps = False
-# )
-# Frequency_tools.Wavelet.CWT.wavelet_CWT(ecg_line,fs,scales_ramge=[1,8],time_range=[2.904,3],plott=True)
-#
-# input('ss')
+from scipy import signal
+
+
+def firwin_lowpass(cutoff, fs, order=3):
+    if order % 2 == 0:
+        order = order + 1
+    nyq = 0.5 * fs
+    normal_cutoff = cutoff / nyq
+    b = signal.firwin(order, normal_cutoff)
+    a = 1
+    return b, a
+
+def butter_lowpass(cutoff, fs, order=5,):
+    nyq = 0.5 * fs
+    normal_cutoff = cutoff / nyq
+    b, a = signal.butter(order, normal_cutoff, btype='low', analog=False)
+    return b, a
+
+b,a = butter_lowpass(15,fs,order=5)
+filtered_signal = signal.filtfilt(b,a,ecg_line)
+_, rpeaks = nk.ecg_peaks(filtered_signal, sampling_rate=fs)
+signal_dwt, waves_dwt = nk.ecg_delineate(filtered_signal, rpeaks, sampling_rate=fs, method="dwt", show=False, show_type='all')
+waves_dwt['ECG_R_Peaks'] = list(rpeaks['ECG_R_Peaks'])
+ecg_points = waves_dwt
+#Plottermaan_lib.masplot(ecg_line,fs=fs,markers=ecg_points,dotstyle='large')
+Plottermaan_lib.masplot(ecg_line,filtered_signal,fs=fs,markers=ecg_points,dotstyle='large')
+input('ss')
+#Frequency_tools.Wavelet.CWT.wavelet_CWT(ecg_line,fs,scales_ramge=[1,8],time_range=[2.900,3],plott=True,block=True)
+#Frequency_tools.Wavelet.CWT.morlet_CWT(ecg_line,fs,w=5,time_range=[1.43,1.5],freq_range=[0,200],plott=True,quality_factor=10)
+#input('ss')
+Geometry.Signal_geometry.MA_inflection_detector(ecg_line,fs,time_range=[2.558,2.763],plot=True,average_scale_coef=10)
+input('ss')
 '''
 Noising ECG signal
 '''
